@@ -34,6 +34,7 @@ known-first-party = ["engine", "apps", "config"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-ra --strict-markers --strict-config"
 
 [tool.commitizen]
