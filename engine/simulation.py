@@ -68,3 +68,7 @@ class Simulation:
             raise ValueError(f"Cannot run a negative number of steps: {steps}.")
         for _ in range(steps):
             self.step()
+
+    def snapshot(self) -> bytes:
+        """An immutable copy of every cell colour, row by row (index = y * width + x)."""
+        return bytes(self._cells)
