@@ -97,3 +97,5 @@ REST_FRAMEWORK = {
         "run": "20/min",
     },
 }
+
+STATICFILES_DIRS = [BASE_DIR / "static"]
