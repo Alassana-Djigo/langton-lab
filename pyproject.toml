@@ -6,7 +6,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Alassana Djigo" }]
-dependencies = []
+dependencies = [
+    "django>=6.1.3",
+    "django-environ>=0.14.0",
+    "djangorestframework>=3.18.3",
+]
 
 [dependency-groups]
 dev = [
@@ -14,6 +18,7 @@ dev = [
     "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
     "ruff>=0.17.5",
 ]
 
@@ -35,9 +40,14 @@ known-first-party = ["engine", "apps", "config"]
 minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = ["."]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 addopts = "-ra --strict-markers --strict-config"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
 version_provider = "pep621"
 tag_format = "v$version"
+
+[tool.coverage.run]
+source = ["engine", "apps", "config"]
+omit = ["config/wsgi.py"]
