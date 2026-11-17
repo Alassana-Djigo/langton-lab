@@ -35,7 +35,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "DJ", "PT", "S", "RUF
 known-first-party = ["engine", "apps", "config"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S105", "S106"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
