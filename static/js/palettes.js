@@ -1,66 +1,69 @@
-// Colour palettes. Colour 0 is always the "empty" background; the others are spaced
-// along a gradient so that rules with up to 16 colours stay readable.
-
-export const PALETTES = {
-  aurora: {
-    label: "Aurora",
-    background: [10, 14, 26],
-    hue: [190, 290],
-    saturation: 0.85,
-    lightness: [0.62, 0.6],
-    ant: [255, 255, 255],
-  },
-  ember: {
-    label: "Ember",
-    background: [18, 11, 13],
-    hue: [-5, 55],
-    saturation: 0.9,
-    lightness: [0.55, 0.62],
-    ant: [255, 255, 255],
-  },
-  forest: {
-    label: "Forest",
-    background: [8, 17, 14],
-    hue: [95, 175],
-    saturation: 0.7,
-    lightness: [0.52, 0.6],
-    ant: [255, 255, 255],
-  },
-  mono: {
-    label: "Mono",
-    background: [10, 12, 18],
-    hue: [0, 0],
-    saturation: 0,
-    lightness: [0.92, 0.4],
-    ant: [255, 77, 109],
-  },
-};
+// Colour palettes for the grid. Colour 0 is the ground the ant starts on; every other colour
+// is a flat, solid fill. Each palette also says how the ant is drawn so that it stays visible
+// on cells of its own colour.
 
 const lerp = (from, to, t) => from + (to - from) * t;
 
-// Standard HSL to RGB conversion (h in degrees, s and l between 0 and 1).
-function hslToRgb(hue, saturation, lightness) {
-  const h = ((hue % 360) + 360) % 360;
-  const k = (n) => (n + h / 30) % 12;
-  const a = saturation * Math.min(lightness, 1 - lightness);
-  const f = (n) => lightness - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return [Math.round(255 * f(0)), Math.round(255 * f(8)), Math.round(255 * f(4))];
+/** A grey for colour `i` of `n`, going from `from` (0-255) to `to`. Colour 1 is always `from`. */
+function grey(from, to, i, n) {
+  const t = n > 2 ? (i - 1) / (n - 2) : 0;
+  const level = Math.round(lerp(from, to, t));
+  return `#${level.toString(16).padStart(2, "0").repeat(3)}`;
 }
 
-/** Returns `{ colors, ant }`: one [r, g, b] per colour, plus the colour of the ants. */
-export function buildPalette(key, nColors) {
-  const palette = PALETTES[key] ?? PALETTES.aurora;
-  const colors = [palette.background];
-  const gradientSteps = Math.max(nColors - 2, 1);
-  for (let i = 1; i < nColors; i++) {
-    const t = (i - 1) / gradientSteps;
-    colors.push(
-      hslToRgb(
-        lerp(palette.hue[0], palette.hue[1], t),
-        palette.saturation,
-        lerp(palette.lightness[0], palette.lightness[1], t),
-      ),
-    );
+const FLAT_COLOURS = [
+  "#000000",
+  "#FFD60A",
+  "#E5352B",
+  "#1F5FBF",
+  "#2E9E4F",
+  "#FF8A00",
+  "#F28CB1",
+  "#7A4B2A",
+  "#19B5C9",
+  "#8DC63F",
+  "#1B2A5C",
+  "#8E8E88",
+  "#8F1D2C",
+  "#2B8C7E",
+  "#B07CD8",
+];
+
+export const PALETTES = {
+  ink: {
+    label: "Black on white",
+    ground: "#FFFFFF",
+    ant: { fill: "#000000", halo: "#FFFFFF" },
+    colour: (i, n) => grey(0, 168, i, n),
+  },
+  flat: {
+    label: "Flat colours",
+    ground: "#FFFFFF",
+    ant: { fill: "#000000", halo: "#FFFFFF" },
+    colour: (i) => FLAT_COLOURS[(i - 1) % FLAT_COLOURS.length],
+  },
+  inverse: {
+    label: "White on black",
+    ground: "#000000",
+    ant: { fill: "#FFFFFF", halo: "#000000" },
+    colour: (i, n) => grey(255, 90, i, n),
+  },
+};
+
+export const DEFAULT_PALETTE = "ink";
+
+/** Returns `{ colours, ant }`: one "#rrggbb" per colour (index 0 is the ground), and the ant colours. */
+export function buildPalette(key, nColours) {
+  const palette = PALETTES[key] ?? PALETTES[DEFAULT_PALETTE];
+  const colours = [palette.ground];
+  for (let i = 1; i < nColours; i++) {
+    colours.push(palette.colour(i, nColours));
   }
-  return { colors, ant: palette.ant };
+  return { colours, ant: palette.ant };
+}
+
+/** "#rrggbb" to [r, g, b]. */
+export function hexToRgb(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 }

@@ -1,8 +1,12 @@
-// Draws a simulation on a canvas that has exactly one pixel per cell. CSS scales the
-// canvas up with `image-rendering: pixelated`, which keeps every cell crisp and makes
-// drawing very cheap: one typed-array write per cell and a single putImageData call.
+// Draws a simulation on two stacked canvases.
+//
+// The board canvas has exactly one pixel per cell and is scaled up by CSS with
+// `image-rendering: pixelated`, which keeps cells crisp and makes drawing cheap: one typed-array
+// write per cell and a single putImageData call. The ants are drawn on a second canvas that
+// matches the on-screen size, so the ant drawing stays sharp at any zoom.
 
-import { buildPalette } from "./palettes.js";
+import { drawAnt } from "./ant.js";
+import { buildPalette, hexToRgb } from "./palettes.js";
 
 const LITTLE_ENDIAN = new Uint8Array(new Uint32Array([0x0a0b0c0d]).buffer)[0] === 0x0d;
 
@@ -14,45 +18,74 @@ function pack([r, g, b]) {
   return value >>> 0;
 }
 
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+// Ant size on screen, in CSS pixels: about six cells long, but never tiny or huge.
+const MIN_ANT_PX = 24;
+const MAX_ANT_PX = 48;
+const ANT_CELLS = 6;
+
 export class Renderer {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.context = canvas.getContext("2d", { alpha: false });
+  constructor(board, sprites) {
+    this.board = board;
+    this.boardContext = board.getContext("2d", { alpha: false });
+    this.sprites = sprites;
+    this.spriteContext = sprites.getContext("2d");
+    this.columns = 1;
     this.image = null;
     this.pixels = null;
-    this.colors = [];
+    this.colours = [];
     this.palette32 = new Uint32Array(0);
-    this.antColor = "#ffffff";
+    this.antColours = { fill: "#000000", halo: "#FFFFFF" };
+    this.pixelsPerCell = 1; // device pixels of the sprite canvas per grid cell
+    this.devicePixelRatio = 1;
   }
 
   resize(width, height) {
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.image = this.context.createImageData(width, height);
+    this.columns = width;
+    this.board.width = width;
+    this.board.height = height;
+    this.image = this.boardContext.createImageData(width, height);
     this.pixels = new Uint32Array(this.image.data.buffer);
+    this.fitSprites();
   }
 
-  setPalette(key, nColors) {
-    const { colors, ant } = buildPalette(key, nColors);
-    this.colors = colors;
-    this.palette32 = Uint32Array.from(colors, (color) => pack(color));
-    this.antColor = `rgb(${ant.join(",")})`;
+  /** Match the sprite canvas to the on-screen size of the board. Call it when that size changes. */
+  fitSprites() {
+    const rect = this.board.getBoundingClientRect();
+    this.devicePixelRatio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * this.devicePixelRatio));
+    const height = Math.max(1, Math.round(rect.height * this.devicePixelRatio));
+    if (this.sprites.width !== width || this.sprites.height !== height) {
+      this.sprites.width = width;
+      this.sprites.height = height;
+    }
+    this.pixelsPerCell = width / this.columns;
+  }
+
+  setPalette(key, nColours) {
+    const { colours, ant } = buildPalette(key, nColours);
+    this.colours = colours;
+    this.palette32 = Uint32Array.from(colours, (hex) => pack(hexToRgb(hex)));
+    this.antColours = ant;
   }
 
   draw(simulation) {
-    const { cells, ants, width, height } = simulation;
-    const { pixels, palette32, context } = this;
+    const { cells, ants } = simulation;
+    const { pixels, palette32 } = this;
     for (let i = 0; i < cells.length; i++) {
       pixels[i] = palette32[cells[i]];
     }
-    context.putImageData(this.image, 0, 0);
+    this.boardContext.putImageData(this.image, 0, 0);
 
-    // Ants are drawn a little larger than one cell on big grids, so they stay visible.
-    const size = Math.max(1, Math.round(Math.max(width, height) / 80));
-    const offset = size >> 1;
-    context.fillStyle = this.antColor;
+    const context = this.spriteContext;
+    context.clearRect(0, 0, this.sprites.width, this.sprites.height);
+    const size =
+      clamp(this.pixelsPerCell * ANT_CELLS, MIN_ANT_PX * this.devicePixelRatio, MAX_ANT_PX * this.devicePixelRatio);
     for (const ant of ants) {
-      context.fillRect(ant.x - offset, ant.y - offset, size, size);
+      const x = (ant.x + 0.5) * this.pixelsPerCell;
+      const y = (ant.y + 0.5) * this.pixelsPerCell;
+      drawAnt(context, x, y, (ant.heading * Math.PI) / 2, size, this.antColours);
     }
   }
 }

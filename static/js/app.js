@@ -1,20 +1,32 @@
 // The simulator UI: wires the DOM, the engine and the renderer together.
 
 import { MAX_COLORS, Simulation, parseRule } from "./engine.js";
-import { PALETTES } from "./palettes.js";
+import { DEFAULT_PALETTE, PALETTES } from "./palettes.js";
 import { Renderer } from "./renderer.js";
 
 const SIZES = [50, 100, 200, 300, 400, 500];
 const PRESETS = ["RL", "RLR", "LLRR", "RLLR", "LRRRRRLLR", "RRLLLRLLLRRR"];
+const PRESET_NOTES = {
+  RL: "The classic ant. It builds its highway after about 10,000 steps.",
+  RLR: "Grows chaotically. Nobody knows whether it ever builds a highway.",
+  LLRR: "Grows symmetrically.",
+  RLLR: "Its pattern becomes symmetric over and over again.",
+  LRRRRRLLR: "Fills a square around itself.",
+  RRLLLRLLLRRR: "Builds a filled triangle that grows and moves.",
+};
 const MAX_ANTS = 32;
 const MAX_FRAME_SECONDS = 0.1; // never simulate more than 100 ms of work per frame
-const STATS_INTERVAL_MS = 100;
+const READOUT_INTERVAL_MS = 100;
 const DEFAULT_SPEED = 55; // slider position (0-100)
-const DEFAULTS = { rule: "RL", size: 200, ants: 1, palette: "aurora" };
+const DEFAULTS = { rule: "RL", size: 200, ants: 1, palette: DEFAULT_PALETTE };
+
+const TURN_TEXT = { L: "turns left", R: "turns right", N: "goes straight", U: "turns around" };
 
 const byId = (id) => document.getElementById(id);
 const els = {
   board: byId("board"),
+  sprites: byId("sprites"),
+  caption: byId("caption"),
   play: byId("play"),
   step: byId("step"),
   reset: byId("reset"),
@@ -22,18 +34,19 @@ const els = {
   speedLabel: byId("speed-label"),
   rule: byId("rule"),
   presets: byId("presets"),
+  presetNote: byId("preset-note"),
   size: byId("size"),
-  ants: byId("ants"),
+  antCount: byId("ant-count"),
   palette: byId("palette"),
   share: byId("share"),
   error: byId("config-error"),
   statSteps: byId("stat-steps"),
   statPainted: byId("stat-painted"),
   statBox: byId("stat-box"),
-  colors: byId("colors"),
+  colours: byId("colours"),
 };
 
-const renderer = new Renderer(els.board);
+const renderer = new Renderer(els.board, els.sprites);
 const state = {
   simulation: null,
   config: { ...DEFAULTS },
@@ -41,11 +54,12 @@ const state = {
   stepsPerSecond: 1,
   budget: 0,
   lastFrame: 0,
-  lastStats: 0,
-  colorOutputs: [],
+  lastReadout: 0,
+  countCells: [],
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const format = (number) => number.toLocaleString("en-US");
 
 // ---------------------------------------------------------------- configuration
 
@@ -101,11 +115,11 @@ function writeConfigToHash(config) {
   history.replaceState(null, "", `#${params}`);
 }
 
-/** Reads and validates the form. Throws a RangeError with a readable message. */
+/** Reads and validates the form. Throws a RangeError with a message the person can act on. */
 function readConfigFromInputs() {
   const rule = els.rule.value.trim().toUpperCase();
   parseRule(rule);
-  const ants = Number(els.ants.value);
+  const ants = Number(els.antCount.value);
   if (!Number.isInteger(ants) || ants < 1 || ants > MAX_ANTS) {
     throw new RangeError(`Use between 1 and ${MAX_ANTS} ants.`);
   }
@@ -115,8 +129,9 @@ function readConfigFromInputs() {
 function syncInputs(config) {
   els.rule.value = config.rule;
   els.size.value = String(config.size);
-  els.ants.value = String(config.ants);
+  els.antCount.value = String(config.ants);
   els.palette.value = config.palette;
+  updatePresetButtons(config.rule);
 }
 
 function showError(message) {
@@ -139,10 +154,11 @@ function applyConfig(config) {
 
   renderer.resize(size, size);
   renderer.setPalette(config.palette, simulation.nColors);
-  buildColorList(config.rule);
+  buildColourTable(config.rule);
+  updatePresetButtons(config.rule);
   pause();
   renderer.draw(simulation);
-  updateStats();
+  updateReadout();
   writeConfigToHash(config);
 }
 
@@ -159,9 +175,9 @@ function onConfigChange() {
 function onPaletteChange() {
   state.config = { ...state.config, palette: els.palette.value };
   renderer.setPalette(state.config.palette, state.simulation.nColors);
-  buildColorList(state.config.rule);
+  buildColourTable(state.config.rule);
   renderer.draw(state.simulation);
-  updateStats();
+  updateReadout();
   writeConfigToHash(state.config);
 }
 
@@ -175,47 +191,53 @@ function previewRule() {
   }
 }
 
-// ------------------------------------------------------------------- statistics
+// ---------------------------------------------------------------------- readout
 
-function buildColorList(ruleText) {
-  els.colors.replaceChildren();
-  state.colorOutputs = [];
+function buildColourTable(rule) {
+  els.colours.replaceChildren();
+  state.countCells = [];
   for (let i = 0; i < state.simulation.nColors; i++) {
-    const item = document.createElement("li");
+    const row = document.createElement("tr");
 
+    const nameCell = document.createElement("td");
     const swatch = document.createElement("span");
     swatch.className = "swatch";
-    swatch.style.background = `rgb(${renderer.colors[i].join(",")})`;
+    swatch.style.backgroundColor = renderer.colours[i];
+    nameCell.append(swatch, i === 0 ? "Ground" : `Colour ${i}`);
 
-    const name = document.createElement("span");
-    name.className = "color-name";
-    name.textContent = i === 0 ? "Empty" : `Colour ${i}`;
+    const turnCell = document.createElement("td");
+    turnCell.textContent = TURN_TEXT[rule[i]];
 
-    const turn = document.createElement("span");
-    turn.className = "badge";
-    turn.textContent = ruleText[i];
-    turn.title = "How the ant turns on this colour";
+    const countCell = document.createElement("td");
+    countCell.className = "num";
 
-    const count = document.createElement("output");
-    count.className = "color-count";
-
-    item.append(swatch, name, turn, count);
-    els.colors.append(item);
-    state.colorOutputs.push(count);
+    row.append(nameCell, turnCell, countCell);
+    els.colours.append(row);
+    state.countCells.push(countCell);
   }
 }
 
-const format = (number) => number.toLocaleString("en-US");
+function describe(stats) {
+  if (stats.steps === 0) {
+    const who = stats.ants === 1 ? "One ant stands" : `${stats.ants} ants stand`;
+    return `${who} on an empty grid. Press Play or hit the space bar.`;
+  }
+  const painted = `${format(stats.painted)} ${stats.painted === 1 ? "cell" : "cells"} painted`;
+  const box = stats.boundingBox;
+  const area = box ? `, in an area ${box.width} cells wide and ${box.height} tall` : "";
+  return `Step ${format(stats.steps)}. ${painted}${area}.`;
+}
 
-function updateStats() {
+function updateReadout() {
   const stats = state.simulation.stats();
+  els.caption.textContent = describe(stats);
   els.statSteps.textContent = format(stats.steps);
   els.statPainted.textContent = format(stats.painted);
   els.statBox.textContent = stats.boundingBox
-    ? `${stats.boundingBox.width} x ${stats.boundingBox.height}`
-    : "-";
+    ? `${stats.boundingBox.width} by ${stats.boundingBox.height}`
+    : "none yet";
   stats.colorCounts.forEach((count, i) => {
-    state.colorOutputs[i].textContent = format(count);
+    state.countCells[i].textContent = format(count);
   });
 }
 
@@ -229,7 +251,7 @@ function play() {
   if (state.running) return;
   state.running = true;
   state.lastFrame = performance.now();
-  state.lastStats = 0;
+  state.lastReadout = 0;
   updatePlayButton();
   requestAnimationFrame(frame);
 }
@@ -248,7 +270,7 @@ function stepOnce() {
   pause();
   state.simulation.run(1);
   renderer.draw(state.simulation);
-  updateStats();
+  updateReadout();
 }
 
 function resetSimulation() {
@@ -268,9 +290,9 @@ function frame(now) {
     state.simulation.run(steps);
     renderer.draw(state.simulation);
   }
-  if (now - state.lastStats >= STATS_INTERVAL_MS) {
-    updateStats();
-    state.lastStats = now;
+  if (now - state.lastReadout >= READOUT_INTERVAL_MS) {
+    updateReadout();
+    state.lastReadout = now;
   }
   requestAnimationFrame(frame);
 }
@@ -291,26 +313,33 @@ function onSpeedChange() {
 
 // ------------------------------------------------------------------------ setup
 
+function updatePresetButtons(rule) {
+  for (const button of els.presets.children) {
+    button.setAttribute("aria-pressed", String(button.textContent === rule));
+  }
+  els.presetNote.textContent = PRESET_NOTES[rule] ?? "";
+}
+
 function populateControls() {
   for (const size of SIZES) {
-    els.size.append(new Option(`${size} x ${size}`, String(size)));
+    els.size.append(new Option(`${size} by ${size}`, String(size)));
   }
   for (const [key, palette] of Object.entries(PALETTES)) {
     els.palette.append(new Option(palette.label, key));
   }
   els.rule.maxLength = MAX_COLORS;
-  els.ants.max = String(MAX_ANTS);
+  els.antCount.max = String(MAX_ANTS);
 
   for (const rule of PRESETS) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = rule;
-    chip.addEventListener("click", () => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "preset";
+    button.textContent = rule;
+    button.addEventListener("click", () => {
       els.rule.value = rule;
       onConfigChange();
     });
-    els.presets.append(chip);
+    els.presets.append(button);
   }
 }
 
@@ -322,7 +351,7 @@ function bindEvents() {
   els.rule.addEventListener("input", previewRule);
   els.rule.addEventListener("change", onConfigChange);
   els.size.addEventListener("change", onConfigChange);
-  els.ants.addEventListener("change", onConfigChange);
+  els.antCount.addEventListener("change", onConfigChange);
   els.palette.addEventListener("change", onPaletteChange);
 
   els.share.addEventListener("click", async () => {
@@ -342,6 +371,13 @@ function bindEvents() {
     syncInputs(config);
     applyConfig(config);
   });
+
+  // Keep the ant sharp when the board changes size (window resize, browser zoom).
+  new ResizeObserver(() => {
+    if (!state.simulation) return;
+    renderer.fitSprites();
+    renderer.draw(state.simulation);
+  }).observe(els.board);
 
   document.addEventListener("keydown", (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
