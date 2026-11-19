@@ -1,0 +1,463 @@
+{
+  "cases": [
+    {
+      "name": "classic ant, 11,000 steps",
+      "rule": "RL",
+      "width": 200,
+      "height": 200,
+      "steps": 11000,
+      "ants": [
+        {
+          "x": 100,
+          "y": 100,
+          "heading": 0
+        }
+      ]
+    },
+    {
+      "name": "RLR, three colours",
+      "rule": "RLR",
+      "width": 100,
+      "height": 100,
+      "steps": 5000,
+      "ants": [
+        {
+          "x": 50,
+          "y": 50,
+          "heading": 0
+        }
+      ]
+    },
+    {
+      "name": "LLRR with three ants",
+      "rule": "LLRR",
+      "width": 100,
+      "height": 100,
+      "steps": 4000,
+      "ants": [
+        {
+          "x": 50,
+          "y": 50,
+          "heading": 0
+        },
+        {
+          "x": 30,
+          "y": 60,
+          "heading": 1
+        },
+        {
+          "x": 70,
+          "y": 20,
+          "heading": 2
+        }
+      ]
+    },
+    {
+      "name": "LRRRRRLLR with four ants",
+      "rule": "LRRRRRLLR",
+      "width": 150,
+      "height": 150,
+      "steps": 20000,
+      "ants": [
+        {
+          "x": 75,
+          "y": 75,
+          "heading": 0
+        },
+        {
+          "x": 40,
+          "y": 75,
+          "heading": 1
+        },
+        {
+          "x": 75,
+          "y": 110,
+          "heading": 2
+        },
+        {
+          "x": 110,
+          "y": 75,
+          "heading": 3
+        }
+      ]
+    },
+    {
+      "name": "RRLLLRLLLRRR with two ants",
+      "rule": "RRLLLRLLLRRR",
+      "width": 100,
+      "height": 100,
+      "steps": 8000,
+      "ants": [
+        {
+          "x": 50,
+          "y": 50,
+          "heading": 0
+        },
+        {
+          "x": 50,
+          "y": 30,
+          "heading": 2
+        }
+      ]
+    },
+    {
+      "name": "straight and U-turn letters",
+      "rule": "RNUL",
+      "width": 60,
+      "height": 60,
+      "steps": 3000,
+      "ants": [
+        {
+          "x": 30,
+          "y": 30,
+          "heading": 0
+        },
+        {
+          "x": 10,
+          "y": 10,
+          "heading": 1
+        }
+      ]
+    },
+    {
+      "name": "grid wider than it is tall",
+      "rule": "RL",
+      "width": 120,
+      "height": 80,
+      "steps": 6000,
+      "ants": [
+        {
+          "x": 60,
+          "y": 40,
+          "heading": 0
+        }
+      ]
+    },
+    {
+      "name": "a grid of one cell",
+      "rule": "RLR",
+      "width": 1,
+      "height": 1,
+      "steps": 7,
+      "ants": [
+        {
+          "x": 0,
+          "y": 0,
+          "heading": 0
+        }
+      ]
+    },
+    {
+      "name": "two ants on the same cell",
+      "rule": "RL",
+      "width": 30,
+      "height": 30,
+      "steps": 500,
+      "ants": [
+        {
+          "x": 15,
+          "y": 15,
+          "heading": 0
+        },
+        {
+          "x": 15,
+          "y": 15,
+          "heading": 2
+        }
+      ]
+    },
+    {
+      "name": "sixteen colours",
+      "rule": "RLRLLRRLRLLRRLRL",
+      "width": 120,
+      "height": 120,
+      "steps": 20000,
+      "ants": [
+        {
+          "x": 60,
+          "y": 60,
+          "heading": 0
+        }
+      ]
+    }
+  ],
+  "results": {
+    "classic ant, 11,000 steps": {
+      "ants": [
+        [
+          66,
+          114,
+          2
+        ]
+      ],
+      "color_counts": [
+        39166,
+        834
+      ],
+      "bounding_box": [
+        63,
+        78,
+        129,
+        122
+      ],
+      "checksum": 16564762
+    },
+    "RLR, three colours": {
+      "ants": [
+        [
+          36,
+          58,
+          2
+        ]
+      ],
+      "color_counts": [
+        9605,
+        230,
+        165
+      ],
+      "bounding_box": [
+        34,
+        34,
+        65,
+        62
+      ],
+      "checksum": 2815861
+    },
+    "LLRR with three ants": {
+      "ants": [
+        [
+          50,
+          50,
+          0
+        ],
+        [
+          30,
+          60,
+          1
+        ],
+        [
+          70,
+          20,
+          2
+        ]
+      ],
+      "color_counts": [
+        9556,
+        216,
+        180,
+        48
+      ],
+      "bounding_box": [
+        21,
+        11,
+        78,
+        64
+      ],
+      "checksum": 3101400
+    },
+    "LRRRRRLLR with four ants": {
+      "ants": [
+        [
+          25,
+          57,
+          0
+        ],
+        [
+          86,
+          99,
+          3
+        ],
+        [
+          107,
+          92,
+          0
+        ],
+        [
+          62,
+          87,
+          1
+        ]
+      ],
+      "color_counts": [
+        17413,
+        787,
+        2239,
+        616,
+        342,
+        319,
+        256,
+        231,
+        297
+      ],
+      "bounding_box": [
+        23,
+        56,
+        128,
+        129
+      ],
+      "checksum": 198260723
+    },
+    "RRLLLRLLLRRR with two ants": {
+      "ants": [
+        [
+          44,
+          44,
+          0
+        ],
+        [
+          46,
+          26,
+          0
+        ]
+      ],
+      "color_counts": [
+        8756,
+        226,
+        112,
+        53,
+        126,
+        79,
+        183,
+        95,
+        100,
+        108,
+        77,
+        85
+      ],
+      "bounding_box": [
+        35,
+        14,
+        68,
+        68
+      ],
+      "checksum": 29528726
+    },
+    "straight and U-turn letters": {
+      "ants": [
+        [
+          34,
+          38,
+          3
+        ],
+        [
+          2,
+          14,
+          0
+        ]
+      ],
+      "color_counts": [
+        2926,
+        228,
+        246,
+        200
+      ],
+      "bounding_box": [
+        0,
+        0,
+        59,
+        59
+      ],
+      "checksum": 1914016
+    },
+    "grid wider than it is tall": {
+      "ants": [
+        [
+          62,
+          40,
+          2
+        ]
+      ],
+      "color_counts": [
+        9158,
+        442
+      ],
+      "bounding_box": [
+        49,
+        24,
+        86,
+        57
+      ],
+      "checksum": 2106462
+    },
+    "a grid of one cell": {
+      "ants": [
+        [
+          0,
+          0,
+          3
+        ]
+      ],
+      "color_counts": [
+        0,
+        1,
+        0
+      ],
+      "bounding_box": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "checksum": 1
+    },
+    "two ants on the same cell": {
+      "ants": [
+        [
+          17,
+          21,
+          2
+        ],
+        [
+          19,
+          11,
+          0
+        ]
+      ],
+      "color_counts": [
+        796,
+        104
+      ],
+      "bounding_box": [
+        8,
+        7,
+        24,
+        22
+      ],
+      "checksum": 46004
+    },
+    "sixteen colours": {
+      "ants": [
+        [
+          46,
+          46,
+          0
+        ]
+      ],
+      "color_counts": [
+        13344,
+        147,
+        73,
+        83,
+        120,
+        92,
+        52,
+        53,
+        83,
+        41,
+        57,
+        58,
+        52,
+        55,
+        39,
+        51
+      ],
+      "bounding_box": [
+        39,
+        45,
+        77,
+        79
+      ],
+      "checksum": 52579290
+    }
+  }
+}

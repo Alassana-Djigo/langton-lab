@@ -1,0 +1,12 @@
+{
+  "name": "langton-lab",
+  "private": true,
+  "type": "module",
+  "description": "Interactive Langton's ant simulator. This file only exists to run the JavaScript tests.",
+  "scripts": {
+    "test": "node --test tests/js/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
