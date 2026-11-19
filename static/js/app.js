@@ -18,20 +18,36 @@ const MAX_ANTS = 32;
 const MAX_FRAME_SECONDS = 0.1; // never simulate more than 100 ms of work per frame
 const READOUT_INTERVAL_MS = 100;
 const DEFAULT_SPEED = 55; // slider position (0-100)
+const ZOOM_STEP = 1.5;
+const FOLLOW_CELL_PX = 16; // how big the cells get when you start following the ant
 const DEFAULTS = { rule: "RL", size: 200, ants: 1, palette: DEFAULT_PALETTE };
 
 const TURN_TEXT = { L: "turns left", R: "turns right", N: "goes straight", U: "turns around" };
+const TURN_PAST = { L: "turned left", R: "turned right", N: "went straight", U: "turned around" };
+const COMPASS = ["north", "east", "south", "west"];
+
+const NARRATION_IDLE =
+  "Press Step to watch one move at a time: what the ant stands on, how it turns and what it leaves behind.";
+const NARRATION_FAST =
+  "Running fast. Slow the speed down, or pause and press Step, to see single moves.";
 
 const byId = (id) => document.getElementById(id);
 const els = {
   board: byId("board"),
-  sprites: byId("sprites"),
   caption: byId("caption"),
+  narration: byId("narration"),
   play: byId("play"),
   step: byId("step"),
   reset: byId("reset"),
   speed: byId("speed"),
   speedLabel: byId("speed-label"),
+  zoomOut: byId("zoom-out"),
+  zoomIn: byId("zoom-in"),
+  zoomLabel: byId("zoom-label"),
+  zoomWhole: byId("zoom-whole"),
+  zoomPattern: byId("zoom-pattern"),
+  follow: byId("follow"),
+  grid: byId("grid"),
   rule: byId("rule"),
   presets: byId("presets"),
   presetNote: byId("preset-note"),
@@ -46,11 +62,13 @@ const els = {
   colours: byId("colours"),
 };
 
-const renderer = new Renderer(els.board, els.sprites);
+const renderer = new Renderer(els.board);
 const state = {
   simulation: null,
   config: { ...DEFAULTS },
   running: false,
+  follow: false,
+  narration: NARRATION_IDLE,
   stepsPerSecond: 1,
   budget: 0,
   lastFrame: 0,
@@ -151,13 +169,14 @@ function applyConfig(config) {
   state.simulation = simulation;
   state.config = config;
   state.budget = 0;
+  state.narration = NARRATION_IDLE;
 
   renderer.resize(size, size);
   renderer.setPalette(config.palette, simulation.nColors);
   buildColourTable(config.rule);
   updatePresetButtons(config.rule);
   pause();
-  renderer.draw(simulation);
+  setFollowFlag(false);
   updateReadout();
   writeConfigToHash(config);
 }
@@ -176,7 +195,6 @@ function onPaletteChange() {
   state.config = { ...state.config, palette: els.palette.value };
   renderer.setPalette(state.config.palette, state.simulation.nColors);
   buildColourTable(state.config.rule);
-  renderer.draw(state.simulation);
   updateReadout();
   writeConfigToHash(state.config);
 }
@@ -228,9 +246,12 @@ function describe(stats) {
   return `Step ${format(stats.steps)}. ${painted}${area}.`;
 }
 
+/** Redraws the board and updates the numbers and the sentences around it. */
 function updateReadout() {
+  redraw();
   const stats = state.simulation.stats();
   els.caption.textContent = describe(stats);
+  els.narration.textContent = state.narration;
   els.statSteps.textContent = format(stats.steps);
   els.statPainted.textContent = format(stats.painted);
   els.statBox.textContent = stats.boundingBox
@@ -239,6 +260,122 @@ function updateReadout() {
   stats.colorCounts.forEach((count, i) => {
     state.countCells[i].textContent = format(count);
   });
+}
+
+// ------------------------------------------------------------------ the camera
+
+/** Draws the board, keeping the camera on the ant when "Follow ant" is on. */
+function redraw() {
+  if (state.follow) {
+    const ant = state.simulation.ants[0];
+    renderer.centerOn(ant.x + 0.5, ant.y + 0.5);
+  }
+  renderer.draw(state.simulation);
+  updateViewControls();
+}
+
+function updateViewControls() {
+  const factor = renderer.factor;
+  els.zoomLabel.textContent = `${Number(factor.toFixed(1))}\u00d7`;
+  els.zoomOut.disabled = factor <= 1.001;
+  els.zoomIn.disabled = factor >= renderer.maxFactor - 0.001;
+  els.board.dataset.zoomed = String(factor > 1.05);
+}
+
+function zoom(factor) {
+  renderer.zoomBy(factor);
+  redraw();
+}
+
+function showWholeGrid() {
+  setFollowFlag(false);
+  renderer.showWholeGrid();
+  redraw();
+}
+
+function fitPattern() {
+  setFollowFlag(false);
+  renderer.fitBox(state.simulation.stats().boundingBox);
+  redraw();
+}
+
+/** Only records whether the camera follows the ant. The caller redraws. */
+function setFollowFlag(on) {
+  state.follow = on;
+  els.follow.setAttribute("aria-pressed", String(on));
+}
+
+function setFollow(on) {
+  setFollowFlag(on);
+  if (on && renderer.zoom < FOLLOW_CELL_PX * 0.75) {
+    renderer.zoomTo(FOLLOW_CELL_PX);
+  }
+  redraw();
+}
+
+function bindBoardGestures() {
+  const pointers = new Map();
+  let lastPinch = 0;
+
+  const pinchDistance = () => {
+    if (pointers.size !== 2) return 0;
+    const [a, b] = [...pointers.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+
+  els.board.addEventListener("pointerdown", (event) => {
+    els.board.setPointerCapture(event.pointerId);
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    lastPinch = pinchDistance();
+  });
+
+  els.board.addEventListener("pointermove", (event) => {
+    const previous = pointers.get(event.pointerId);
+    if (!previous) return;
+    const current = { x: event.clientX, y: event.clientY };
+    pointers.set(event.pointerId, current);
+    if (pointers.size === 1) {
+      if (state.follow) setFollowFlag(false);
+      renderer.panBy(current.x - previous.x, current.y - previous.y);
+    } else if (pointers.size === 2) {
+      const distance = pinchDistance();
+      const rect = els.board.getBoundingClientRect();
+      const [a, b] = [...pointers.values()];
+      if (lastPinch > 0) {
+        renderer.zoomBy(
+          distance / lastPinch,
+          (a.x + b.x) / 2 - rect.left,
+          (a.y + b.y) / 2 - rect.top,
+        );
+      }
+      lastPinch = distance;
+    }
+    redraw();
+  });
+
+  const release = (event) => {
+    pointers.delete(event.pointerId);
+    lastPinch = pinchDistance();
+  };
+  els.board.addEventListener("pointerup", release);
+  els.board.addEventListener("pointercancel", release);
+
+  // Scroll over the board to zoom towards the cursor.
+  els.board.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      const rect = els.board.getBoundingClientRect();
+      const lines = event.deltaMode === 1 ? 16 : 1;
+      renderer.zoomBy(
+        Math.exp(-event.deltaY * lines * 0.0015),
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+      redraw();
+    },
+    { passive: false },
+  );
 }
 
 // ---------------------------------------------------------------------- running
@@ -266,10 +403,24 @@ function toggle() {
   else play();
 }
 
+/** Runs one step and writes a sentence about what the first ant just did. */
+function narratedStep() {
+  const simulation = state.simulation;
+  const ant = simulation.ants[0];
+  const { x, y } = ant;
+  const before = simulation.cell(x, y);
+  simulation.run(1);
+  const after = simulation.cell(x, y);
+
+  const who = simulation.ants.length > 1 ? "Ant 1" : "The ant";
+  const stood = before === 0 ? "a ground cell" : `a colour ${before} cell`;
+  const left = after === 0 ? "turned it back to ground" : `painted it colour ${after}`;
+  state.narration = `${who} stood on ${stood}, ${TURN_PAST[state.config.rule[before]]}, ${left} and moved ${COMPASS[ant.heading]}.`;
+}
+
 function stepOnce() {
   pause();
-  state.simulation.run(1);
-  renderer.draw(state.simulation);
+  narratedStep();
   updateReadout();
 }
 
@@ -287,8 +438,13 @@ function frame(now) {
   const steps = Math.floor(state.budget);
   if (steps > 0) {
     state.budget -= steps;
-    state.simulation.run(steps);
-    renderer.draw(state.simulation);
+    if (steps === 1) {
+      narratedStep();
+    } else {
+      state.simulation.run(steps);
+      state.narration = NARRATION_FAST;
+    }
+    redraw();
   }
   if (now - state.lastReadout >= READOUT_INTERVAL_MS) {
     updateReadout();
@@ -348,11 +504,21 @@ function bindEvents() {
   els.step.addEventListener("click", stepOnce);
   els.reset.addEventListener("click", resetSimulation);
   els.speed.addEventListener("input", onSpeedChange);
+  els.zoomIn.addEventListener("click", () => zoom(ZOOM_STEP));
+  els.zoomOut.addEventListener("click", () => zoom(1 / ZOOM_STEP));
+  els.zoomWhole.addEventListener("click", showWholeGrid);
+  els.zoomPattern.addEventListener("click", fitPattern);
+  els.follow.addEventListener("click", () => setFollow(!state.follow));
+  els.grid.addEventListener("change", () => {
+    renderer.showGrid = els.grid.checked;
+    redraw();
+  });
   els.rule.addEventListener("input", previewRule);
   els.rule.addEventListener("change", onConfigChange);
   els.size.addEventListener("change", onConfigChange);
   els.antCount.addEventListener("change", onConfigChange);
   els.palette.addEventListener("change", onPaletteChange);
+  bindBoardGestures();
 
   els.share.addEventListener("click", async () => {
     try {
@@ -372,11 +538,11 @@ function bindEvents() {
     applyConfig(config);
   });
 
-  // Keep the ant sharp when the board changes size (window resize, browser zoom).
+  // Keep the board sharp when its size changes (window resize, browser zoom).
   new ResizeObserver(() => {
     if (!state.simulation) return;
-    renderer.fitSprites();
-    renderer.draw(state.simulation);
+    renderer.fit();
+    redraw();
   }).observe(els.board);
 
   document.addEventListener("keydown", (event) => {
@@ -389,6 +555,14 @@ function bindEvents() {
       stepOnce();
     } else if (event.key === "r" || event.key === "R") {
       resetSimulation();
+    } else if (event.key === "+" || event.key === "=") {
+      zoom(ZOOM_STEP);
+    } else if (event.key === "-" || event.key === "_") {
+      zoom(1 / ZOOM_STEP);
+    } else if (event.key === "0") {
+      showWholeGrid();
+    } else if (event.key === "f" || event.key === "F") {
+      setFollow(!state.follow);
     }
   });
 }

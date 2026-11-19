@@ -31,10 +31,24 @@
 
         <figure class="stage">
           <div class="board-frame">
-            <canvas id="board" role="img" aria-label="The grid, with the cells the ant has painted"></canvas>
-            <canvas id="sprites" aria-hidden="true"></canvas>
+            <canvas id="board" role="img" aria-label="The grid, with the cells the ant has painted. Scroll to zoom, drag to move."></canvas>
           </div>
+
+          <div class="view" role="group" aria-label="View">
+            <button id="zoom-out" class="btn btn-small" type="button" aria-label="Zoom out">&minus;</button>
+            <button id="zoom-in" class="btn btn-small" type="button" aria-label="Zoom in">+</button>
+            <output id="zoom-label" class="zoom-label" aria-label="Zoom">1&times;</output>
+            <button id="zoom-whole" class="btn btn-small" type="button">Whole grid</button>
+            <button id="zoom-pattern" class="btn btn-small" type="button">Fit pattern</button>
+            <button id="follow" class="btn btn-small" type="button" aria-pressed="false">Follow ant</button>
+            <label class="check" title="Grid lines appear once the cells are big enough">
+              <input id="grid" type="checkbox" checked>
+              <span>Grid lines</span>
+            </label>
+          </div>
+
           <figcaption id="caption" class="caption"></figcaption>
+          <p id="narration" class="narration"></p>
 
           <div class="transport">
             <button id="play" class="btn btn-primary" type="button">Play</button>
@@ -46,7 +60,7 @@
               <output id="speed-label" for="speed"></output>
             </label>
           </div>
-          <p class="keys">Space plays or pauses, S takes one step, R resets.</p>
+          <p class="keys">Space plays or pauses, S takes one step, R resets. Scroll over the board to zoom and drag to move. Keys: + and - zoom, 0 shows the whole grid, F follows the ant.</p>
         </figure>
 
         <div class="controls">

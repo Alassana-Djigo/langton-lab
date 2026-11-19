@@ -12,7 +12,9 @@ def test_home_page_renders_the_simulator(client):
     assert response.status_code == 200
     assert "Langton Lab" in html
     assert 'id="board"' in html
-    assert 'id="sprites"' in html
+    assert 'id="zoom-in"' in html
+    assert 'id="follow"' in html
+    assert 'id="narration"' in html
     assert "csrftoken" in response.cookies
 
 

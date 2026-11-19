@@ -34,32 +34,35 @@ export const PALETTES = {
     label: "Black on white",
     ground: "#FFFFFF",
     ant: { fill: "#000000", halo: "#FFFFFF" },
+    grid: "rgba(0, 0, 0, 0.18)",
     colour: (i, n) => grey(0, 168, i, n),
   },
   flat: {
     label: "Flat colours",
     ground: "#FFFFFF",
     ant: { fill: "#000000", halo: "#FFFFFF" },
+    grid: "rgba(0, 0, 0, 0.18)",
     colour: (i) => FLAT_COLOURS[(i - 1) % FLAT_COLOURS.length],
   },
   inverse: {
     label: "White on black",
     ground: "#000000",
     ant: { fill: "#FFFFFF", halo: "#000000" },
+    grid: "rgba(255, 255, 255, 0.22)",
     colour: (i, n) => grey(255, 90, i, n),
   },
 };
 
 export const DEFAULT_PALETTE = "ink";
 
-/** Returns `{ colours, ant }`: one "#rrggbb" per colour (index 0 is the ground), and the ant colours. */
+/** Returns `{ colours, ant, grid }`: one "#rrggbb" per colour (index 0 is the ground), the ant colours and the grid-line colour. */
 export function buildPalette(key, nColours) {
   const palette = PALETTES[key] ?? PALETTES[DEFAULT_PALETTE];
   const colours = [palette.ground];
   for (let i = 1; i < nColours; i++) {
     colours.push(palette.colour(i, nColours));
   }
-  return { colours, ant: palette.ant };
+  return { colours, ant: palette.ant, grid: palette.grid };
 }
 
 /** "#rrggbb" to [r, g, b]. */

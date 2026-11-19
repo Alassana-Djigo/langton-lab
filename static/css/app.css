@@ -181,23 +181,62 @@ p {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 1 / 1;
 }
 
 #board {
-  image-rendering: pixelated;
+  cursor: zoom-in;
+  touch-action: pan-y; /* the page still scrolls with a finger until you zoom in */
 }
 
-#sprites {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  pointer-events: none;
+#board[data-zoomed="true"] {
+  cursor: grab;
+  touch-action: none;
+}
+
+#board[data-zoomed="true"]:active {
+  cursor: grabbing;
+}
+
+.view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 12px;
+}
+
+.zoom-label {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
 }
 
 .caption {
   min-height: 3.2em;
   margin-top: 14px;
   font-size: 1rem;
+}
+
+.narration {
+  min-height: 4.7em;
+  margin: 0 0 4px;
+  padding: 2px 0 2px 14px;
+  border-left: 4px solid var(--highlight);
 }
 
 .transport {
@@ -256,6 +295,28 @@ p {
 
 .btn:active {
   transform: translateY(1px);
+}
+
+.btn:disabled {
+  border-color: var(--hairline);
+  background: var(--paper);
+  color: var(--muted);
+  cursor: default;
+}
+
+.btn:disabled:hover {
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.btn-small {
+  padding: 5px 12px;
+  font-size: 0.95rem;
+}
+
+.btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--sheet);
 }
 
 .btn-primary {
